@@ -26,7 +26,7 @@ ui_print() {
 
 # Greetings - echo goes to recovery.log, ui_print goes to screen and recovery.log
 echo "test_radio_version.sh starting with arguments: $@"
-ui_print "Verifying that radio is Jellybean or newer..."
+ui_print "Verifying that radio is IceCreamSandwich or newer..."
 
 # Extract the firmware image
 echo "Copying the radio to /tmp..."
@@ -40,8 +40,9 @@ rmdir $MOUNT_POINT
 #
 # There is a string with "SGH-" followed by the model
 #   Examples: SGH-I727 SGH-I727R SGH-T989D
+#   Modded JPN Model SC-03D SC-05D
 echo "Searching radio image for model..."
-RADIO_MODEL=`strings $IMAGE_TO_CHECK | grep -E ^SGH- -m 1 | cut -d - -f 2`
+RADIO_MODEL=`strings $IMAGE_TO_CHECK | grep -E ^SC- -m 1 | cut -d - -f 2`
 if [ "$RADIO_MODEL" == "" ];then
     ui_print "ERROR: Could not determine the radio model."
     rm $IMAGE_TO_CHECK
@@ -57,8 +58,9 @@ ui_print "Found radio model: $RADIO_MODEL"
 #   followed by either a number (1-9) or a capital letter
 #   Examples: I727UCMC1 I727UCLL3 I727UCLK4 I727RUXUMA7
 #             T989UVLE1 I757MUGMC5
+#   Modded JPN Model Examples: SC03DOMLPH SC03DOMMP3
 echo "Searching radio image for version..."
-RADIO_VERSION=`strings $IMAGE_TO_CHECK | grep -E ^$RADIO_MODEL[A-Z]{4,5}[A-Z1-9]$ -m 1`
+RADIO_VERSION=`strings $IMAGE_TO_CHECK | grep -E ^SC$RADIO_MODEL[A-Z]{1}[A-Z1-9] -m 1`
 if [ "$RADIO_VERSION" == "" ];then
     ui_print "ERROR: Could not determine the radio version."
     rm $IMAGE_TO_CHECK
