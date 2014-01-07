@@ -26,7 +26,7 @@ ui_print() {
 
 # Greetings - echo goes to recovery.log, ui_print goes to screen and recovery.log
 echo "test_radio_version.sh starting with arguments: $@"
-ui_print "Verifying that radio is IceCreamSandwich or newer..."
+ui_print "Verifying that radio is Jellybean or newer..."
 
 # Extract the firmware image
 echo "Copying the radio to /tmp..."
@@ -40,10 +40,9 @@ rmdir $MOUNT_POINT
 #
 # There is a string with "SGH-" followed by the model
 #   Examples: SGH-I727 SGH-I727R SGH-T989D
-#   Modded JPN Model SC-03D SC-05D
 echo "Searching radio image for model..."
-RADIO_MODEL=`strings $IMAGE_TO_CHECK | grep -E ^SC- -m 1 | cut -d - -f 2`
-if [ "$RADIO_MODEL" == "" ];then
+RADIO_MODEL=`strings $IMAGE_TO_CHECK | grep -E ^SGH- -m 1 | cut -d - -f 2`
+if [ "$RADIO_MODEL" == "" ]; then
     ui_print "ERROR: Could not determine the radio model."
     rm $IMAGE_TO_CHECK
     exit 1
@@ -58,36 +57,63 @@ ui_print "Found radio model: $RADIO_MODEL"
 #   followed by either a number (1-9) or a capital letter
 #   Examples: I727UCMC1 I727UCLL3 I727UCLK4 I727RUXUMA7
 #             T989UVLE1 I757MUGMC5
-#   Modded JPN Model Examples: SC03DOMLPH SC03DOMMP3
 echo "Searching radio image for version..."
-RADIO_VERSION=`strings $IMAGE_TO_CHECK | grep -E ^SC$RADIO_MODEL[A-Z]{1}[A-Z1-9] -m 1`
-if [ "$RADIO_VERSION" == "" ];then
+RADIO_VERSION=`strings $IMAGE_TO_CHECK | grep -E ^$RADIO_MODEL[A-Z]{4,5}[A-Z1-9]$ -m 1`
+if [ "$RADIO_VERSION" == "" ]; then
     ui_print "ERROR: Could not determine the radio version."
     rm $IMAGE_TO_CHECK
     exit 1
 fi
 ui_print "Found radio version: $RADIO_VERSION"
+rm $IMAGE_TO_CHECK
 
 # Iterate through the possible model/minversion pairs
 #   - compare to the specified minversion
+MINVERSIONS_FOR_THIS_MODEL=""
 for PAIR in "$@"; do
     MODEL=`echo $PAIR | cut -d : -f 1`
     MINVERSION=`echo $PAIR | cut -d : -f 2`
     if [ "$MODEL" == "$RADIO_MODEL" ]; then
-        rm $IMAGE_TO_CHECK
-        if [ "$RADIO_VERSION" \< "$MODEL$MINVERSION" ]; then
-            ui_print "ERROR: Radio must be newer than $MINVERSION"
-            exit 1
+        echo "Model matched! MODEL=$MODEL MINVERSION=$MINVERSION"
+        COMPARE_VERSION="$MODEL$MINVERSION"
+        if [ "$MINVERSIONS_FOR_THIS_MODEL" == "" ]; then
+            MINVERSIONS_FOR_THIS_MODEL="$MINVERSION"
+        else
+            MINVERSIONS_FOR_THIS_MODEL="$MINVERSIONS_FOR_THIS_MODEL $MINVERSION"
         fi
-        ui_print "Radio is new enough, continuing install..."
-        exit 0
+        echo "-- 1: $COMPARE_VERSION"
+        echo "-- 2: $MINVERSIONS_FOR_THIS_MODEL"
+        if [ ${#COMPARE_VERSION} -eq ${#RADIO_VERSION} ]; then
+            echo "-- version lengths matched"
+            if [ "$RADIO_VERSION" \< "$MODEL$MINVERSION" ]; then
+                ui_print "ERROR: Radio must be newer than $MINVERSION"
+                exit 1
+            fi
+            ui_print "Radio is new enough, continuing install..."
+            exit 0
+        fi
     fi
 done
+
+# The version of the installed radio can be of a format that we don't
+# recognize (i.e. different number of characters). In this case, error
+# to the user and tell them to notify the maintainer.
+if [ "$MINVERSIONS_FOR_THIS_MODEL" != "" ]; then
+    ui_print "ERROR: It looks like your radio's version"
+    ui_print "is unknown to this script. If you know this"
+    ui_print "to be a working radio, please ask your"
+    ui_print "maintainer to update the version whitelist!"
+    ui_print "Your version: $RADIO_VERSION"
+    ui_print "Known good versions:"
+    for VERSION in "$MINVERSIONS_FOR_THIS_MODEL"; do
+        ui_print "  $RADIO_MODEL$VERSION"
+    done
+    exit 1
+fi
 
 # For the radio installed, there is no minimum version defined by the
 # recovery script. Warn, but allow the install.
 ui_print "WARNING: No minimum version defined for $RADIO_MODEL."
 ui_print "MAKE SURE YOUR RADIO IS JELLYBEAN OR NEWER!"
-rm $IMAGE_TO_CHECK
 exit 0
 
