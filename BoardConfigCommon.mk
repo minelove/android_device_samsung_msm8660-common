@@ -78,6 +78,9 @@ BOARD_CAMERA_USE_MM_HEAP := true
 # Workaround to avoid issues with legacy liblights on QCOM platforms
 TARGET_PROVIDES_LIBLIGHT := true
 
+# CMHW
+BOARD_HARDWARE_CLASS += device/samsung/msm8660-common/cmhw
+
 # Audio
 TARGET_QCOM_MEDIA_VARIANT := caf
 BOARD_HAVE_SAMSUNG_AUDIO := true
