@@ -161,6 +161,7 @@ PRODUCT_PROPERTY_OVERRIDES += \
     wifi.interface=wlan0 \
     com.qc.hardware=true \
     ro.vendor.extension_library=/system/lib/libqc-opt.so \
+    ro.vold.umsdirtyratio=50 \
     debug.composition.type=dyn \
     debug.mdpcomp.maxlayer=3 \
     debug.hwc.dynThreshold=1.9 \
