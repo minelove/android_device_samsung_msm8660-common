@@ -105,6 +105,9 @@ TARGET_USES_CM_POWERHAL := true
 # Recovery
 BOARD_CUSTOM_GRAPHICS := ../../../device/samsung/msm8660-common/recovery/graphics.c
 
+# RIL
+BOARD_RIL_CLASS := ../../../device/samsung/msm8660-common/ril
+
 # SELinux
 BOARD_SEPOLICY_DIRS += \
     device/samsung/msm8660-common/sepolicy
