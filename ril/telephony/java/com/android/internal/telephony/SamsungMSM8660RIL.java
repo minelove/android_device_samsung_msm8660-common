@@ -71,12 +71,6 @@ public class SamsungMSM8660RIL extends RIL implements CommandsInterface {
     private boolean driverCallU = needsOldRilFeature("newDriverCallU");
     private boolean dialCode = needsOldRilFeature("newDialCode");
     private boolean samsungEmergency = needsOldRilFeature("samsungEMSReq");
-
-    public SamsungMSM8660RIL(Context context, int preferredNetworkType,
-            int cdmaSubscription, Integer instanceId) {
-        this(context, preferredNetworkType, cdmaSubscription);
-    }
-
     public SamsungMSM8660RIL(Context context, int networkMode,
             int cdmaSubscription) {
         super(context, networkMode, cdmaSubscription);
@@ -293,21 +287,16 @@ public class SamsungMSM8660RIL extends RIL implements CommandsInterface {
             dc = new DriverCall();
 
             dc.state = DriverCall.stateFromCLCC(p.readInt());
-            dc.index = p.readInt() & 0xff;
+            dc.index = p.readInt();
             dc.TOA = p.readInt();
             dc.isMpty = (0 != p.readInt());
             dc.isMT = (0 != p.readInt());
             dc.als = p.readInt();
             voiceSettings = p.readInt();
-            if (isGSM)
-                p.readInt();
             dc.isVoice = (0 == voiceSettings) ? false : true;
+            if(driverCallU || (driverCall && !isGSM) || mRilVersion < 7 ? false : true)
+                 p.readInt();
             dc.isVoicePrivacy = (0 != p.readInt());
-            if (isGSM) {
-                p.readInt();
-                p.readInt();
-                p.readString();
-            }
             dc.number = p.readString();
             int np = p.readInt();
             dc.numberPresentation = DriverCall.presentationFromCLIP(np);
@@ -356,62 +345,35 @@ public class SamsungMSM8660RIL extends RIL implements CommandsInterface {
         }
 
         return response;
-
     }
 
     @Override
     protected void
     processUnsolicited (Parcel p) {
-        Object ret;
-        int dataPosition = p.dataPosition(); // save off position within the Parcel
-        int response = p.readInt();
-
-        switch(response) {
-            case RIL_UNSOL_RIL_CONNECTED: // Fix for NV/RUIM setting on CDMA SIM devices
-                // skip getcdmascriptionsource as if qualcomm handles it in the ril binary
-                ret = responseInts(p);
-                setRadioPower(false, null);
-                setPreferredNetworkType(mPreferredNetworkType, null);
-                setCdmaSubscriptionSource(mCdmaSubscription, null);
-                if(mRilVersion >= 8)
-                    setCellInfoListRate(Integer.MAX_VALUE, null);
-                notifyRegistrantsRilConnectionChanged(((int[])ret)[0]);
-                break;
-            case RIL_UNSOL_NITZ_TIME_RECEIVED:
-                handleNitzTimeReceived(p);
-                break;
-            // SAMSUNG STATES
-            case 11010: // RIL_UNSOL_AM:
-                ret = responseString(p);
-                String amString = (String) ret;
-                Rlog.d(RILJ_LOG_TAG, "Executing AM: " + amString);
-
-                try {
-                    Runtime.getRuntime().exec("am " + amString);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    Rlog.e(RILJ_LOG_TAG, "am " + amString + " could not be executed.");
-                }
-                break;
-            case 11021: // RIL_UNSOL_RESPONSE_HANDOVER:
-                ret = responseVoid(p);
-                break;
+        int dataPosition = p.dataPosition();
+        int origResponse = p.readInt();
+        int newResponse = origResponse;
+        switch (origResponse) {
             case 1036:
-                ret = responseVoid(p);
+                newResponse = RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED;
                 break;
-            case 11017: // RIL_UNSOL_WB_AMR_STATE:
-                ret = responseInts(p);
-                setWbAmr(((int[])ret)[0]);
-                break;
-            default:
-                // Rewind the Parcel
-                p.setDataPosition(dataPosition);
-
-                // Forward responses that we are not overriding to the super class
-                super.processUnsolicited(p);
+            case 1037: // RIL_UNSOL_TETHERED_MODE_STATE_CHANGED
+            case 1038: // RIL_UNSOL_DATA_NETWORK_STATE_CHANGED
+            case 1039: // RIL_UNSOL_ON_SS
+            case 1040: // RIL_UNSOL_STK_CC_ALPHA_NOTIFY
+            case 1042: // RIL_UNSOL_QOS_STATE_CHANGED_IND
+                riljLog("SamsungMSM8660RIL: ignoring unsolicited response " +
+                        origResponse);
                 return;
         }
-
+        if (newResponse != origResponse) {
+            riljLog("SamsungMSM8660RIL: remap unsolicited response from " +
+                    origResponse + " to " + newResponse);
+            p.setDataPosition(dataPosition);
+            p.writeInt(newResponse);
+        }
+        p.setDataPosition(dataPosition);
+        super.processUnsolicited(p);
     }
 
     @Override
@@ -904,6 +866,5 @@ public class SamsungMSM8660RIL extends RIL implements CommandsInterface {
 
         send(rr);
     }
+
 }
-
-
