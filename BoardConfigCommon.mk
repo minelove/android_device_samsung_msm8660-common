@@ -61,6 +61,9 @@ TARGET_NO_INITLOGO := true
 # Fonts
 EXTENDED_FONT_FOOTPRINT := true
 
+# Dlmalloc
+MALLOC_IMPL := dlmalloc
+
 # GPS
 BOARD_HAVE_NEW_QC_GPS := true
 
