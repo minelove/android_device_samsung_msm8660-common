@@ -86,6 +86,7 @@ BOARD_RIL_CLASS := ../../../device/samsung/msm8660-common/ril
 
 # Wifi related defines
 BOARD_HAVE_SAMSUNG_WIFI := true
+BOARD_NO_APSME_ATTR := true
 BOARD_WLAN_DEVICE := bcmdhd
 BOARD_HOSTAPD_DRIVER := NL80211
 BOARD_HOSTAPD_PRIVATE_LIB := lib_driver_cmd_${BOARD_WLAN_DEVICE}
