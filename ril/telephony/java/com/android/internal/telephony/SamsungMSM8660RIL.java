@@ -356,30 +356,80 @@ public class SamsungMSM8660RIL extends RIL implements CommandsInterface {
     @Override
     protected void
     processUnsolicited (Parcel p) {
+        Object ret;
         int dataPosition = p.dataPosition();
         int origResponse = p.readInt();
         int newResponse = origResponse;
         switch (origResponse) {
+            case RIL_UNSOL_RIL_CONNECTED:
+                ret = responseInts(p);
+                setRadioPower(false, null);
+                setPreferredNetworkType(mPreferredNetworkType, null);
+                setCdmaSubscriptionSource(mCdmaSubscription, null);
+                if(mRilVersion >= 8)
+                    setCellInfoListRate(Integer.MAX_VALUE, null);
+                notifyRegistrantsRilConnectionChanged(((int[])ret)[0]);
+                break;
+            case RIL_UNSOL_NITZ_TIME_RECEIVED:
+                handleNitzTimeReceived(p);
+                break;
+            // SAMSUNG STATES
+            case 11010: // RIL_UNSOL_AM:
+                ret = responseString(p);
+                String amString = (String) ret;
+                Rlog.d(RILJ_LOG_TAG, "Executing AM: " + amString);
+
+                try {
+                    Runtime.getRuntime().exec("am " + amString);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    Rlog.e(RILJ_LOG_TAG, "am " + amString + " could not be executed.");
+                }
+                break;
+            case 11021: // RIL_UNSOL_RESPONSE_HANDOVER:
+                ret = responseVoid(p);
+                break;
             case 1036:
-                newResponse = RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED;
+                ret = responseVoid(p);
+                break;
+            case 11017: // RIL_UNSOL_WB_AMR_STATE:
+                ret = responseInts(p);
+                setWbAmr(((int[])ret)[0]);
+                break;
+            // Remap
+            case 1039:
+                newResponse = RIL_UNSOL_ON_SS;
+                break;
+            case 1040:
+                newResponse = RIL_UNSOL_STK_CC_ALPHA_NOTIFY;
+                break;
+            case 1041:
+                newResponse = RIL_UNSOL_UICC_SUBSCRIPTION_STATUS_CHANGED;
                 break;
             case 1037: // RIL_UNSOL_TETHERED_MODE_STATE_CHANGED
             case 1038: // RIL_UNSOL_DATA_NETWORK_STATE_CHANGED
-            case 1039: // RIL_UNSOL_ON_SS
-            case 1040: // RIL_UNSOL_STK_CC_ALPHA_NOTIFY
             case 1042: // RIL_UNSOL_QOS_STATE_CHANGED_IND
                 riljLog("SamsungMSM8660RIL: ignoring unsolicited response " +
                         origResponse);
                 return;
+            default:
+                // Rewind the Parcel
+                p.setDataPosition(dataPosition);
+
+                // Forward responses that we are not overriding to the super class
+                super.processUnsolicited(p);
+                return;
         }
+
         if (newResponse != origResponse) {
             riljLog("SamsungMSM8660RIL: remap unsolicited response from " +
                     origResponse + " to " + newResponse);
             p.setDataPosition(dataPosition);
             p.writeInt(newResponse);
+            p.setDataPosition(dataPosition);
+            super.processUnsolicited(p);
         }
-        p.setDataPosition(dataPosition);
-        super.processUnsolicited(p);
+
     }
 
     @Override
