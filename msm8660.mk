@@ -99,6 +99,7 @@ PRODUCT_PACKAGES += \
     audio.r_submix.default \
     audio.primary.msm8660 \
     libaudio-resampler \
+    libaudioamp \
     libaudioutils
 
 # Camera
