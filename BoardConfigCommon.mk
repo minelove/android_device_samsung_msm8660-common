@@ -1,4 +1,4 @@
-# Copyright (C) 2012 The CyanogenMod Project
+# Copyright (C) 2015 The CyanogenMod Project
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -65,9 +65,6 @@ TARGET_NO_INITLOGO := true
 # Fonts
 EXTENDED_FONT_FOOTPRINT := true
 
-# Dlmalloc
-MALLOC_IMPL := dlmalloc
-
 # GPS
 BOARD_HAVE_NEW_QC_GPS := true
 
@@ -100,6 +97,8 @@ TARGET_RELEASETOOLS_EXTENSIONS := device/samsung/msm8660-common
 BOARD_RIL_CLASS := ../../../device/samsung/msm8660-common/ril
 
 # SELinux
+include device/qcom/sepolicy/sepolicy.mk
+
 BOARD_SEPOLICY_DIRS += \
     device/samsung/msm8660-common/sepolicy
 
