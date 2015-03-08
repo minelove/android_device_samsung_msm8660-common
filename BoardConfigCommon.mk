@@ -50,9 +50,6 @@ LOCAL_CFLAGS += -DCHARGER_SHOW_PERCENTAGE
 # CMHW
 BOARD_HARDWARE_CLASS += device/samsung/msm8660-common/cmhw
 
-# CMHW
-BOARD_HARDWARE_CLASS += device/samsung/msm8660-common/cmhw
-
 # Display
 BOARD_EGL_CFG := device/samsung/msm8660-common/configs/egl.cfg
 BOARD_USES_LEGACY_MMAP := true
