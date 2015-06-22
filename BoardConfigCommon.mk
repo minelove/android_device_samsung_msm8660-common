@@ -58,6 +58,9 @@ TARGET_NO_INITLOGO := true
 # Fonts
 EXTENDED_FONT_FOOTPRINT := true
 
+# FM
+QCOM_FM_ENABLED := false
+
 # GPS
 BOARD_HAVE_NEW_QC_GPS := true
 
