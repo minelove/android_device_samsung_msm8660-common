@@ -107,7 +107,6 @@ BOARD_SEPOLICY_UNION += \
     device.te \
     file.te \
     file_contexts \
-    gamma_dev.te \
     genfs_contexts \
     init_shell.te \
     kernel.te \
