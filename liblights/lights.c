@@ -28,6 +28,8 @@
 #include <sys/types.h>
 #include <hardware/lights.h>
 
+#define UNUSED __attribute__((unused))
+
 static pthread_once_t g_init = PTHREAD_ONCE_INIT;
 static pthread_mutex_t g_lock = PTHREAD_MUTEX_INITIALIZER;
 static int g_notification_blink_support = 0;
@@ -128,13 +130,13 @@ static int rgb_to_brightness(struct light_state_t const *state)
         + (150*((color>>8) & 0x00ff)) + (29*(color & 0x00ff))) >> 8;
 }
 
-static int set_light_battery(struct light_device_t* dev,
+static int set_light_battery(UNUSED struct light_device_t* dev,
             struct light_state_t const* state)
 {
     return 0;
 }
 
-static int set_light_notifications(struct light_device_t* dev,
+static int set_light_notifications(UNUSED struct light_device_t* dev,
             struct light_state_t const* state)
 {
        int bln_led_control = state->color & 0x00ffffff ? 1 : 0;
@@ -157,7 +159,7 @@ static int set_light_notifications(struct light_device_t* dev,
        return res;
 }
 
-static int set_light_backlight(struct light_device_t *dev,
+static int set_light_backlight(UNUSED struct light_device_t *dev,
             struct light_state_t const *state)
 {
         load_settings();
@@ -171,13 +173,13 @@ static int set_light_backlight(struct light_device_t *dev,
     return err;
 }
 
-static int set_light_keyboard(struct light_device_t *dev,
+static int set_light_keyboard(UNUSED struct light_device_t *dev,
             struct light_state_t const *state)
 {
     return 0;
 }
 
-static int set_light_buttons(struct light_device_t *dev,
+static int set_light_buttons(UNUSED struct light_device_t *dev,
             struct light_state_t const *state)
 {
     int touch_led_control = state->color & 0x00ffffff ? 1 : 2;
