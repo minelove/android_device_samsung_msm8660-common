@@ -54,6 +54,7 @@ PRODUCT_PROPERTY_OVERRIDES += \
 
 PRODUCT_PROPERTY_OVERRIDES += \
     lpa.decode=false \
+    qcom.hw.aac.encoder=true \
     camera2.portability.force_api=1
 
 PRODUCT_PROPERTY_OVERRIDES += \
