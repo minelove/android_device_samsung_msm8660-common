@@ -60,6 +60,7 @@ on early-boot
     setrlimit 8 67108864 67108864
     exec /system/bin/sh /init.qcom.syspart_fixup.sh
     setprop persist.sys.ssr.restart_level 3
+    write /sys/module/subsystem_restart/parameters/enable_ramdumps 0
 
 on boot
     mount debugfs /sys/kernel/debug /sys/kernel/debug
