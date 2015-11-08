@@ -193,8 +193,7 @@ PRODUCT_PACKAGES += \
 
 # USB
 PRODUCT_PACKAGES += \
-    com.android.future.usb.accessory \
-    persist.sys.isUsbOtgEnabled=true
+    com.android.future.usb.accessory
 
 # ART
 PRODUCT_PROPERTY_OVERRIDES += \
