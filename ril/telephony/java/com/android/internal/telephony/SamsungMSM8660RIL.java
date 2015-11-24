@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2014 The CyanogenMod Project
+ * Copyright (C) 2012-2015 The CyanogenMod Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,51 +21,34 @@ import static com.android.internal.telephony.RILConstants.*;
 import android.content.Context;
 import android.media.AudioManager;
 import android.os.AsyncResult;
-import android.os.Handler;
-import android.os.HandlerThread;
-import android.os.Looper;
 import android.os.Message;
 import android.os.Parcel;
-import android.telephony.SmsMessage;
-import android.os.SystemProperties;
 import android.os.SystemClock;
-import android.provider.Settings;
-import android.text.TextUtils;
-import android.telephony.Rlog;
-
-import android.telephony.SignalStrength;
-
+import android.os.SystemProperties;
 import android.telephony.PhoneNumberUtils;
-import com.android.internal.telephony.RILConstants;
-import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
+import android.telephony.Rlog;
+import android.telephony.SignalStrength;
 import com.android.internal.telephony.cdma.CdmaInformationRecords;
-import com.android.internal.telephony.cdma.CdmaInformationRecords.CdmaSignalInfoRec;
 import com.android.internal.telephony.cdma.SignalToneUtil;
+import com.android.internal.telephony.uicc.IccCardApplicationStatus;
+import com.android.internal.telephony.uicc.IccCardStatus;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 
-import com.android.internal.telephony.uicc.IccCardApplicationStatus;
-import com.android.internal.telephony.uicc.IccCardStatus;
-
 /**
- * Qualcomm RIL for the Samsung family.
- * Quad core Exynos4 with Qualcomm modem and later is supported
- * Snapdragon S3 and later is supported
- * This RIL is univerisal meaning it supports CDMA and GSM radio.
- * Handles most GSM and CDMA cases.
+ * Qualcomm RIL for the Samsung MSM8660 family.
  * {@hide}
  */
 public class SamsungMSM8660RIL extends RIL implements CommandsInterface {
 
     private AudioManager mAudioManager;
-
-    private Object mSMSLock = new Object();
+    private boolean isGSM = false;
     private boolean mIsSendingSMS = false;
-    protected boolean isGSM = false;
-    public static final long SEND_SMS_TIMEOUT_IN_MS = 30000;
     private static final int RIL_REQUEST_DIAL_EMERGENCY = 10001;
+    public static final long SEND_SMS_TIMEOUT_IN_MS = 30000;
+    private Object mSMSLock = new Object();
 
     public SamsungMSM8660RIL(Context context, int networkModes, int cdmaSubscription) {
         this(context, networkModes, cdmaSubscription, null);
@@ -190,7 +173,7 @@ public class SamsungMSM8660RIL extends RIL implements CommandsInterface {
 
     @Override
     protected Object responseSignalStrength(Parcel p) {
-        int numInts = 13;
+        int numInts = 12;
         int response[];
 
         // Get raw data
@@ -203,23 +186,9 @@ public class SamsungMSM8660RIL extends RIL implements CommandsInterface {
         //cdma
         response[2] %= 256;
         response[4] %= 256;
+        response[7] &= 0xff;
 
-        // RIL_LTE_SignalStrength
-        if ((response[7] & 0xff) == 255 || response[7] == 99) {
-            // If LTE is not enabled, clear LTE results
-            // 7-11 must be -1 for GSM signal strength to be used (see
-            // frameworks/base/telephony/java/android/telephony/SignalStrength.java)
-            // make sure lte is disabled
-            response[7] = 99;
-            response[8] = SignalStrength.INVALID;
-            response[9] = SignalStrength.INVALID;
-            response[10] = SignalStrength.INVALID;
-            response[11] = SignalStrength.INVALID;
-        } else { // lte is gsm on samsung/qualcomm cdma stack
-            response[7] &= 0xff;
-        }
-
-        return new SignalStrength(response[0], response[1], response[2], response[3], response[4], response[5], response[6], response[7], response[8], response[9], response[10], response[11], (response[12] != 0));
+        return new SignalStrength(response[0], response[1], response[2], response[3], response[4], response[5], response[6], response[7], response[8], response[9], response[10], response[11], true);
 
     }
 
@@ -248,7 +217,7 @@ public class SamsungMSM8660RIL extends RIL implements CommandsInterface {
             dc = new DriverCall();
 
             dc.state = DriverCall.stateFromCLCC(p.readInt());
-            dc.index = p.readInt();
+            dc.index = p.readInt() & 0xff;
             dc.TOA = p.readInt();
             dc.isMpty = (0 != p.readInt());
             dc.isMT = (0 != p.readInt());
@@ -256,12 +225,16 @@ public class SamsungMSM8660RIL extends RIL implements CommandsInterface {
             voiceSettings = p.readInt();
             dc.isVoice = (0 == voiceSettings) ? false : true;
             dc.isVoicePrivacy = (0 != p.readInt());
+            if (isGSM) {
+                p.readInt();
+                p.readInt();
+                p.readString();
+            }
             dc.number = p.readString();
             int np = p.readInt();
             dc.numberPresentation = DriverCall.presentationFromCLIP(np);
             dc.name = p.readString();
-            // according to ril.h, namePresentation should be handled as numberPresentation;
-            dc.namePresentation = DriverCall.presentationFromCLIP(p.readInt());
+            dc.namePresentation = p.readInt();
             int uusInfoPresent = p.readInt();
             if (uusInfoPresent == 1) {
                 dc.uusInfo = new UUSInfo();
@@ -311,17 +284,13 @@ public class SamsungMSM8660RIL extends RIL implements CommandsInterface {
     protected void
     processUnsolicited (Parcel p) {
         Object ret;
-        int dataPosition = p.dataPosition();
-        int origResponse = p.readInt();
-        int newResponse = origResponse;
-        switch (origResponse) {
+        int dataPosition = p.dataPosition(); // save off position within the Parcel
+        int response = p.readInt();
+
+        switch(response) {
             case RIL_UNSOL_RIL_CONNECTED:
                 ret = responseInts(p);
-                if (SystemProperties.get("ril.socket.reset").equals("1")) {
-                    setRadioPower(false, null);
-                }
-                // Trigger socket reset if RIL connect is called again
-                SystemProperties.set("ril.socket.reset", "1");
+                setRadioPower(false, null);
                 setPreferredNetworkType(mPreferredNetworkType, null);
                 setCdmaSubscriptionSource(mCdmaSubscription, null);
                 if(mRilVersion >= 8)
@@ -351,22 +320,6 @@ public class SamsungMSM8660RIL extends RIL implements CommandsInterface {
                 ret = responseInts(p);
                 setWbAmr(((int[])ret)[0]);
                 break;
-            // Remap
-            case 1039:
-                newResponse = RIL_UNSOL_ON_SS;
-                break;
-            case 1040:
-                newResponse = RIL_UNSOL_STK_CC_ALPHA_NOTIFY;
-                break;
-            case 1041:
-                newResponse = RIL_UNSOL_UICC_SUBSCRIPTION_STATUS_CHANGED;
-                break;
-            case 1037: // RIL_UNSOL_TETHERED_MODE_STATE_CHANGED
-            case 1038: // RIL_UNSOL_DATA_NETWORK_STATE_CHANGED
-            case 1042: // RIL_UNSOL_QOS_STATE_CHANGED_IND
-                riljLog("SamsungMSM8660RIL: ignoring unsolicited response " +
-                        origResponse);
-                return;
             case 11055: // RIL_UNSOL_ON_SS:
                 p.setDataPosition(dataPosition);
                 p.writeInt(RIL_UNSOL_ON_SS);
@@ -378,15 +331,6 @@ public class SamsungMSM8660RIL extends RIL implements CommandsInterface {
                 // Forward responses that we are not overriding to the super class
                 super.processUnsolicited(p);
                 return;
-        }
-
-        if (newResponse != origResponse) {
-            riljLog("SamsungMSM8660RIL: remap unsolicited response from " +
-                    origResponse + " to " + newResponse);
-            p.setDataPosition(dataPosition);
-            p.writeInt(newResponse);
-            p.setDataPosition(dataPosition);
-            super.processUnsolicited(p);
         }
 
     }
@@ -449,8 +393,8 @@ public class SamsungMSM8660RIL extends RIL implements CommandsInterface {
         Object ret = null;
         if (error == 0 || p.dataAvail() > 0) {
             switch (rr.mRequest) {
-                case RIL_REQUEST_VOICE_REGISTRATION_STATE: ret = responseVoiceRegistrationState(p); break;
-                case RIL_REQUEST_DATA_REGISTRATION_STATE: ret = responseDataRegistrationState(p); break;
+                case RIL_REQUEST_VOICE_REGISTRATION_STATE: ret = responseVoiceDataRegistrationState(p, false); break;
+                case RIL_REQUEST_DATA_REGISTRATION_STATE: ret = responseVoiceDataRegistrationState(p, true); break;
                 case RIL_REQUEST_OPERATOR: ret =  operatorCheck(p); break;
                 default:
                     throw new RuntimeException("Unrecognized solicited response: " + rr.mRequest);
@@ -478,42 +422,15 @@ public class SamsungMSM8660RIL extends RIL implements CommandsInterface {
     }
 
     private Object
-    responseDataRegistrationState(Parcel p) {
-      String response[] = (String[])responseStrings(p); // all data from parcell get popped
-      if (isGSM){
-        /*
-         * Our RIL reports a value of 30 for DC-HSPAP.
-         * However, this isn't supported in AOSP. So, map it to HSPAP instead
-        */
-           if (response.length > 4 &&
-               response[0].equals("1") &&
-               response[3].equals("30")) {
-               response[3] = "15";
-           }
-
-        /* DANGER WILL ROBINSON
-         * In some cases from Vodaphone we are receiving a RAT of 102
-         * while in tunnels of the metro. Lets Assume that if we
-         * receive 102 we actually want a RAT of 2 for EDGE service */
-           if (response.length > 4 &&
-               response[0].equals("1") &&
-               response[3].equals("102")) {
-               response[3] = "2";
-           }
-
-      }
-      return responseVoiceDataRegistrationState(response);
-   }
-
-   private Object
-   responseVoiceRegistrationState(Parcel p) {
-     String response[] = (String[])responseStrings(p); // all data from parcell get popped
-     return responseVoiceDataRegistrationState(response);
-   }
-
-   private Object
-   responseVoiceDataRegistrationState(String[] response) {
+    responseVoiceDataRegistrationState(Parcel p, boolean data) {
+        String response[] = (String[])responseStrings(p);
         if (isGSM){
+            if (data &&
+                response.length > 4 &&
+                response[0].equals("1") &&
+                response[3].equals("102")) {
+                response[3] = "2";
+            }
             return response;
         }
         if (response.length>=10){
@@ -587,8 +504,8 @@ public class SamsungMSM8660RIL extends RIL implements CommandsInterface {
     protected void notifyRegistrantsCdmaInfoRec(CdmaInformationRecords infoRec) {
         final int response = RIL_UNSOL_CDMA_INFO_REC;
 
-        if (infoRec.record instanceof CdmaSignalInfoRec) {
-            CdmaSignalInfoRec sir = (CdmaSignalInfoRec) infoRec.record;
+        if (infoRec.record instanceof CdmaInformationRecords.CdmaSignalInfoRec) {
+            CdmaInformationRecords.CdmaSignalInfoRec sir = (CdmaInformationRecords.CdmaSignalInfoRec) infoRec.record;
             if (sir != null
                     && sir.isPresent
                     && sir.signalType == SignalToneUtil.IS95_CONST_IR_SIGNAL_IS54B
@@ -712,34 +629,6 @@ public class SamsungMSM8660RIL extends RIL implements CommandsInterface {
         send(rr);
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void getCellInfoList(Message result) {
-        riljLog("getCellInfoList: not supported");
-        if (result != null) {
-            CommandException ex = new CommandException(
-                CommandException.Error.REQUEST_NOT_SUPPORTED);
-            AsyncResult.forMessage(result, null, ex);
-            result.sendToTarget();
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void setCellInfoListRate(int rateInMillis, Message response) {
-        riljLog("setCellInfoListRate: not supported");
-        if (response != null) {
-            CommandException ex = new CommandException(
-                CommandException.Error.REQUEST_NOT_SUPPORTED);
-            AsyncResult.forMessage(response, null, ex);
-            response.sendToTarget();
-        }
-    }
-
     // This call causes ril to crash the socket, stopping further communication
     @Override
     public void
@@ -752,19 +641,5 @@ public class SamsungMSM8660RIL extends RIL implements CommandsInterface {
             result.sendToTarget();
         }
     }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void setDataAllowed(boolean allowed, Message result) {
-        riljLog("setDataAllowed: not supported");
-
-        if (result != null) {
-            CommandException e = new CommandException(
-                CommandException.Error.REQUEST_NOT_SUPPORTED);
-            AsyncResult.forMessage(result, null, e);
-            result.sendToTarget();
-        }
-    }
 }
+
