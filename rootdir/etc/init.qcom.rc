@@ -28,7 +28,7 @@
 import init.qcom.usb.rc
 
 on init
-    export LD_PRELOAD "/system/lib/libboringssl-compat.so /system/lib/libsamsung_symbols.so"
+    export LD_PRELOAD /system/lib/libsamsung_symbols.so
 
     # Set permissions for persist partition
     mkdir /persist 0771 system system

@@ -101,7 +101,6 @@ PRODUCT_PACKAGES += \
 
 # Compatibility symbols wrappers
 PRODUCT_PACKAGES += \
-    libboringssl-compat \
     libsamsung_symbols
 
 # Camera
