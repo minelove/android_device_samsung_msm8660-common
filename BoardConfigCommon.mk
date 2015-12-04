@@ -82,6 +82,9 @@ TARGET_USES_CM_POWERHAL := true
 COMMON_GLOBAL_CFLAGS += -DQCOM_BSP
 TARGET_USES_QCOM_BSP := true
 
+# Radio
+COMMON_GLOBAL_CFLAGS += -DDISABLE_ASHMEM_TRACKING
+
 # Recovery
 BOARD_CUSTOM_GRAPHICS := ../../../device/samsung/msm8660-common/recovery/graphics.c
 TARGET_RECOVERY_FSTAB := device/samsung/msm8660-common/rootdir/etc/fstab.qcom
