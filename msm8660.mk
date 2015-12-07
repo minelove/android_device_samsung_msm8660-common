@@ -166,6 +166,8 @@ PRODUCT_COPY_FILES += \
 
 # OMX
 PRODUCT_PACKAGES += \
+    libdashplayer \
+    libdivxdrmdecrypt \
     libOmxCore \
     libOmxVdec \
     libOmxVenc \
