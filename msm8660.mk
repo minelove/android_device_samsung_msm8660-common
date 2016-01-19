@@ -47,13 +47,11 @@ PRODUCT_PROPERTY_OVERRIDES += \
     ro.vendor.extension_library=/system/lib/libqc-opt.so
 
 PRODUCT_PROPERTY_OVERRIDES += \
-    debug.mdpcomp.maxlayer=3 \
-    debug.hwc.dynThreshold=1.9 \
+    debug.composition.type=dyn \
     persist.hwc.mdpcomp.enable=false \
     ro.opengles.version=131072
 
 PRODUCT_PROPERTY_OVERRIDES += \
-    lpa.decode=false \
     qcom.hw.aac.encoder=true \
     camera2.portability.force_api=1
 
@@ -73,7 +71,22 @@ PRODUCT_PROPERTY_OVERRIDES += \
     ro.telephony.ril_class=SamsungMSM8660RIL
 
 PRODUCT_PROPERTY_OVERRIDES += \
-    ro.vold.umsdirtyratio=50
+    dalvik.vm.dex2oat-flags=--no-watch-dog \
+    dalvik.vm.dex2oat-swap=false \
+    dalvik.vm.image-dex2oat-filter=speed
+
+# Low-Ram
+PRODUCT_PROPERTY_OVERRIDES += \
+    ro.config.max_starting_bg=8 \
+    ro.sys.fw.bg_apps_limit=16 \
+    ro.sys.fw.use_trim_settings=true \
+    ro.sys.fw.empty_app_percent=50 \
+    ro.sys.fw.trim_empty_percent=100 \
+    ro.sys.fw.trim_cache_percent=100 \
+    ro.sys.fw.trim_enable_memory=874512384 \
+    ro.sys.fw.bservice_enable=true \
+    ro.sys.fw.bservice_limit=5 \
+    ro.sys.fw.bservice_age=5000
 
 # Ramdisk
 PRODUCT_PACKAGES += \
