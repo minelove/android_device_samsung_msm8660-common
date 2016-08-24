@@ -229,7 +229,6 @@ PRODUCT_PROPERTY_OVERRIDES += \
 
 # Wifi
 PRODUCT_PACKAGES += \
-    dhcpcd.conf \
     hostapd \
     hostapd_default.conf \
     libnetcmdiface \
