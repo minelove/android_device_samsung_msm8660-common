@@ -33,6 +33,9 @@ endif
 BOARD_HAVE_SAMSUNG_AUDIO := true
 BOARD_USES_LEGACY_ALSA_AUDIO := true
 
+# Bionic
+MALLOC_SVELTE := true
+
 # Bluetooth
 BOARD_HAVE_BLUETOOTH := true
 BOARD_HAVE_BLUETOOTH_BCM := true
